@@ -1,0 +1,47 @@
+# 🔹 Evitar credenciales sensibles
+.env
+config.py
+settings.py
+
+# 🔹 Ignorar archivos compilados de Python
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+
+# 🔹 Evitar archivos de logs
+logs/
+*.log
+
+# 🔹 Dependencias de Python
+venv/
+.env/
+*.egg-info/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# 🔹 Archivos de base de datos locales (si usas SQLite en pruebas)
+*.sqlite3
+*.db
+
+# 🔹 Ignorar caché de Flask y archivos temporales
+instance/
+.mypy_cache/
+.pytest_cache/
+
+# 🔹 Ignorar archivos de JetBrains (PyCharm)
+.idea/
+
+# 🔹 Ignorar archivos de VSCode
+.vscode/
+
+# 🔹 Evitar archivos innecesarios de Git
+.DS_Store
+Thumbs.db
+
+# 🔹 Docker (si usas)
+docker-compose.override.yml
+
+# 🔹 Evitar archivos de SSH si los usas en despliegue
+*.pem
+*.pub
