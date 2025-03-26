@@ -1,7 +1,11 @@
-#infraestructure/extensions.py
-from flask_sqlalchemy import SQLAlchemy
-from flask_cors import CORS
+# infrastructure/extensions.py
+from fastapi.middleware.cors import CORSMiddleware
 
-# Inicializar SQLAlchemy y CORS sin crear la app aún
-db = SQLAlchemy()
-cors = CORS()
+def init_cors(app):
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5174", "http://localhost:5173"],  # Permitir ambos puertos por si cambias
+        allow_credentials=True,
+        allow_methods=["*"],  # Permitir todos los métodos (GET, POST, PUT, etc.)
+        allow_headers=["*"],  # Permitir todos los headers
+    )

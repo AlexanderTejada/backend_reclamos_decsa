@@ -1,12 +1,10 @@
-
-
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 from application.registrar_reclamo_usecase import RegistrarReclamoUseCase
 from application.actualizar_usuario_usecase import ActualizarUsuarioUseCase
 from application.consultar_estado_reclamo_usecase import ConsultarEstadoReclamoUseCase
 from application.consultar_reclamo_usecase import ConsultarReclamoUseCase
-from application.detectar_intencion_usecase import DetectarIntencionUseCase
+from application.detectar_intencion_deepseek_usecase import DetectarIntencionDeepSeekUseCase
 import re
 import logging
 import json
@@ -16,9 +14,8 @@ from infrastructure.sqlalchemy_reclamo_repository import SQLAlchemyReclamoReposi
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-
-class TelegramAdapter:
-    def __init__(self, token, detectar_intencion_usecase: DetectarIntencionUseCase,
+class TelegramAdapterDPSK:
+    def __init__(self, token, detectar_intencion_usecase: DetectarIntencionDeepSeekUseCase,
                  reclamo_usecase: RegistrarReclamoUseCase, actualizar_usecase: ActualizarUsuarioUseCase,
                  consulta_estado_usecase: ConsultarEstadoReclamoUseCase,
                  consulta_reclamo_usecase: ConsultarReclamoUseCase,
@@ -248,7 +245,7 @@ class TelegramAdapter:
                     await update.message.reply_text(
                         f"Gracias por confirmar, {estado.get('nombre')}. Por favor, describe el problema o detalle de tu reclamo (o escribe 'cancelar' para salir)."
                     )
-                else:  # Para "actualizar" - Cambio 3
+                else:  # Para "actualizar"
                     dni = estado.get("dni")
                     campo = estado.get("campo_actualizar")
 
@@ -342,7 +339,6 @@ class TelegramAdapter:
                         if status == 200:
                             usuario = self.actualizar_usecase.usuario_repository.obtener_por_dni(
                                 dni) or self.actualizar_usecase.usuario_repository.obtener_de_db1(dni)
-                            # Cambio 4 y 5: Usar NOMBRE_COMPLETO y mostrar datos actualizados
                             respuesta = (f"✅ ¡Actualización exitosa!\n\n✔️ Datos actualizados:\n"
                                          f"📛 Nombre: {usuario.NOMBRE_COMPLETO}\n"
                                          f"🔢 N° Suministro: {usuario.CODIGO_SUMINISTRO}\n"
@@ -379,7 +375,7 @@ class TelegramAdapter:
             self.redis_client.hset(estado_clave, "fase", "inicio")
 
     def run(self):
-        logging.info("🚀 Bot de Telegram corriendo...")
+        logging.info("🚀 Bot de Telegram (DeepSeek) corriendo...")
         self.app.run_polling()
 
     def format_reclamos(self, reclamo_data=None, is_single=False):

@@ -1,4 +1,4 @@
-#controllers/ reclamo_controller.py
+#controllers/reclamo_controller.py
 from application.reclamo_service import ReclamoService
 from flask import jsonify
 
@@ -6,15 +6,15 @@ class ReclamoController:
     def __init__(self, reclamo_service: ReclamoService):
         self.reclamo_service = reclamo_service
 
-    def obtener_reclamos_con_usuarios(self):
-        """Obtiene todos los reclamos junto con la información del usuario."""
+    def obtener_reclamos_con_clientes(self):
+        """Obtiene todos los reclamos junto con la información del cliente."""
         reclamos, codigo = self.reclamo_service.obtener_reclamos()
-        return jsonify(reclamos), codigo  # ✅ Evita llamar innecesariamente .to_dict()
+        return jsonify(reclamos), codigo
 
     def crear_reclamo(self, dni, descripcion):
-        """Crea un nuevo reclamo asociado a un usuario por su DNI."""
+        """Crea un nuevo reclamo asociado a un cliente por su DNI."""
         resultado, codigo = self.reclamo_service.crear_reclamo(dni, descripcion)
-        return jsonify(resultado), codigo  # ✅ Usa `status_code`
+        return jsonify(resultado), codigo
 
     def cancelar_reclamo(self, id_reclamo):
         """Permite cancelar un reclamo si está en estado 'Pendiente'."""

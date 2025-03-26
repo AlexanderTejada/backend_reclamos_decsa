@@ -1,25 +1,27 @@
-#infraestucture/database.py
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import scoped_session, sessionmaker
-from flask import Flask
+# infrastructure/database.py
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from infrastructure.settings import Config
+import logging
 
-# 🔹 Crear la aplicación Flask y el objeto SQLAlchemy
-app = Flask(__name__)
-app.config.from_object(Config)
-db = SQLAlchemy(app)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# 🔹 Crear la sesión correctamente dentro del contexto de la aplicación
-with app.app_context():
-    SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=db.engine))
+# Motores para cada base de datos
+engine_db1 = create_engine(Config.SQLALCHEMY_BINDS["db1"], pool_size=10, max_overflow=20)
+engine_db2 = create_engine(Config.SQLALCHEMY_BINDS["db2"], pool_size=10, max_overflow=20)
 
-def get_db_session():
-    """Retorna una sesión de base de datos."""
-    session = SessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
+# Fábrica de sesiones
+SessionLocal_db1 = sessionmaker(autocommit=False, autoflush=False, bind=engine_db1)
+SessionLocal_db2 = sessionmaker(autocommit=False, autoflush=False, bind=engine_db2)
 
-# 🔹 Crear la sesión global para ser utilizada en los repositorios
-db_session = SessionLocal
+def init_db(app):
+    """Inicializa las bases de datos para FastAPI."""
+    app.engine_db1 = engine_db1
+    app.engine_db2 = engine_db2
+    logging.info("Bases de datos inicializadas con FastAPI")
+
+def get_db_session(app=None, bind=None):
+    """Retorna una sesión de base de datos para el bind especificado."""
+    if bind == "db1":
+        return SessionLocal_db1()
+    return SessionLocal_db2()  # Por defecto, DB2

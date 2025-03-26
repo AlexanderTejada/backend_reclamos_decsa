@@ -1,9 +1,7 @@
-#application/reclamo_service.py
 import logging
-from domain.entities import UsuarioDB1, UsuarioDB2
+from domain.entities import Cliente, Reclamo
 from infrastructure.sqlalchemy_reclamo_repository import SQLAlchemyReclamoRepository
 from infrastructure.sqlalchemy_usuario_repository import SQLAlchemyUsuarioRepository
-
 
 class ReclamoService:
     def __init__(self, reclamo_repo: SQLAlchemyReclamoRepository, usuario_repo: SQLAlchemyUsuarioRepository):
@@ -11,57 +9,38 @@ class ReclamoService:
         self.usuario_repo = usuario_repo
 
     def crear_reclamo(self, dni, descripcion):
-        """Crea un reclamo. Si el usuario no existe en DB2, lo copia desde DB1."""
+        """Crea un reclamo. Si el cliente no existe en DB2, lo copia desde PR_CAU."""
         logging.info(f"Intentando crear reclamo para DNI: {dni}")
 
-        # 🔹 Buscar usuario en DB2
-        usuario = self.usuario_repo.obtener_por_dni(dni)
+        cliente = self.usuario_repo.obtener_por_dni(dni)
 
-        # 🔹 Si no está en DB2, buscar en DB1 y copiarlo a DB2
-        if not usuario:
-            logging.warning(f"Usuario con DNI {dni} no encontrado en DB2. Buscando en DB1...")
-            usuario = self.usuario_repo.obtener_de_db1(dni)
-            if not usuario:
-                logging.error(f"Usuario con DNI {dni} no encontrado en DB1")
-                return {"error": "Usuario no encontrado"}, 404
+        if not cliente:
+            logging.warning(f"Cliente con DNI {dni} no encontrado en DECSA_EXC. Copiando desde PR_CAU...")
+            cliente = self.usuario_repo.copiar_cliente_a_db2(dni)
+            if not cliente:
+                logging.error(f"Cliente con DNI {dni} no encontrado en PR_CAU")
+                return {"error": "Cliente no encontrado"}, 404
 
-            # Copiar usuario de DB1 a DB2
-            usuario_db2 = UsuarioDB2(
-                COD_USER=usuario.COD_USER,
-                DNI=usuario.DNI,
-                MAIL=usuario.MAIL,
-                CELULAR=usuario.CELULAR,
-                FEC_ADD=usuario.FEC_ADD,
-                APELLIDO=usuario.APELLIDO,
-                FEC_VALIDACION=usuario.FEC_VALIDACION,
-                NOMBRE=usuario.NOMBRE,
-                NUMERO_SUMINISTRO=usuario.NUMERO_SUMINISTRO,
-                NUMERO_MEDIDOR=usuario.NUMERO_MEDIDOR,
-                DIRECCION=usuario.DIRECCION
-            )
-            self.usuario_repo.guardar_en_db2(usuario_db2)
-            usuario = usuario_db2  # Ahora usuario es el que está en DB2
-            logging.info(f"Usuario con DNI {dni} copiado exitosamente a DB2")
+            # También copiamos las facturas del cliente
+            self.usuario_repo.guardar_facturas_en_db2(dni)
 
-        # 🔹 Crear el reclamo
         nuevo_reclamo = Reclamo(
-            COD_USER=usuario.COD_USER,
-            DESCRIPCION=descripcion,
-            ESTADO="Pendiente"
+            ID_USUARIO=cliente.ID_USUARIO,
+            Descripcion=descripcion,
+            Estado="Pendiente"
         )
 
         self.reclamo_repo.guardar(nuevo_reclamo)
-        logging.info(f"Reclamo creado exitosamente para usuario {usuario.NOMBRE} {usuario.APELLIDO}")
+        logging.info(f"Reclamo creado exitosamente para cliente {cliente.Nombre}")
 
         return {
             "ID_RECLAMO": nuevo_reclamo.ID_RECLAMO,
-            "DESCRIPCION": nuevo_reclamo.DESCRIPCION,
-            "ESTADO": nuevo_reclamo.ESTADO,
-            "FECHA_RECLAMO": nuevo_reclamo.FECHA_RECLAMO,
-            "NOMBRE": usuario.NOMBRE,
-            "APELLIDO": usuario.APELLIDO,
-            "DNI": usuario.DNI,
-            "DIRECCION": usuario.DIRECCION
+            "Descripcion": nuevo_reclamo.Descripcion,
+            "Estado": nuevo_reclamo.Estado,
+            "FechaReclamo": nuevo_reclamo.FechaReclamo,
+            "Nombre": cliente.Nombre,
+            "DNI": cliente.DNI,
+            "Direccion": cliente.NombreCalle
         }, 201
 
     def cancelar_reclamo(self, id_reclamo):
@@ -70,10 +49,10 @@ class ReclamoService:
         if not reclamo:
             return {"error": "Reclamo no encontrado"}, 404
 
-        if reclamo.ESTADO != "Pendiente":
-            return {"error": "No puedes cancelar un reclamo en proceso o atendido"}, 400
+        if reclamo.Estado != "Pendiente":
+            return {"error": "No puedes cancelar un reclamo que ya está en proceso o cerrado"}, 400
 
-        reclamo.ESTADO = "Cancelado por el cliente"
+        reclamo.Estado = "Cancelado por el cliente"
         self.reclamo_repo.actualizar(reclamo)
 
         return {"message": "Reclamo cancelado exitosamente"}, 200
@@ -84,18 +63,18 @@ class ReclamoService:
         if not reclamo:
             return {"error": "Reclamo no encontrado"}, 404
 
-        reclamo.ESTADO = nuevo_estado
+        reclamo.Estado = nuevo_estado
         self.reclamo_repo.actualizar(reclamo)
 
-        return {"ID_RECLAMO": reclamo.ID_RECLAMO, "ESTADO": reclamo.ESTADO}, 200
+        return {"ID_RECLAMO": reclamo.ID_RECLAMO, "Estado": reclamo.Estado}, 200
 
     def obtener_reclamos(self, dni):
-        """Obtiene todos los reclamos de un usuario, incluyendo sus datos personales."""
-        usuario = self.usuario_repo.obtener_por_dni(dni)
-        if not usuario:
-            return {"error": "Usuario no encontrado"}, 404
+        """Obtiene todos los reclamos de un cliente por DNI."""
+        cliente = self.usuario_repo.obtener_por_dni(dni)
+        if not cliente:
+            return {"error": "Cliente no encontrado"}, 404
 
-        reclamos = self.reclamo_repo.obtener_por_usuario(usuario.COD_USER)
+        reclamos = self.reclamo_repo.obtener_por_usuario(cliente.ID_USUARIO)
         if not reclamos:
             return {"message": "No hay reclamos registrados"}, 200
 
@@ -103,13 +82,12 @@ class ReclamoService:
         for reclamo in reclamos:
             resultado.append({
                 "ID_RECLAMO": reclamo.ID_RECLAMO,
-                "DESCRIPCION": reclamo.DESCRIPCION,
-                "ESTADO": reclamo.ESTADO,
-                "FECHA_RECLAMO": reclamo.FECHA_RECLAMO,
-                "NOMBRE": usuario.NOMBRE,
-                "APELLIDO": usuario.APELLIDO,
-                "DNI": usuario.DNI,
-                "DIRECCION": usuario.DIRECCION
+                "Descripcion": reclamo.Descripcion,
+                "Estado": reclamo.Estado,
+                "FechaReclamo": reclamo.FechaReclamo,
+                "Nombre": cliente.Nombre,
+                "DNI": cliente.DNI,
+                "Direccion": cliente.NombreCalle
             })
 
         return resultado, 200

@@ -8,7 +8,7 @@ class ProcesarTextoConLlamaUseCase:
 
     def ejecutar(self, texto):
         try:
-            respuesta = requests.post(self.llama_api_url, json={"texto": texto})
+            respuesta = requests.post(self.llama_api_url, json={"prompt": texto})
             return respuesta.json().get("respuesta", "Error en la respuesta")
         except Exception as e:
             return f"⚠️ Error al procesar con Llama: {str(e)}"
