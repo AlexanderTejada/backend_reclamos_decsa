@@ -1,4 +1,3 @@
-# infrastructure/telegram_adapter_chatgpt.py
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 from application.registrar_reclamo_usecase import RegistrarReclamoUseCase
@@ -170,7 +169,9 @@ class TelegramAdapterChatGPT:
                     return
                 usuario_db1 = self.actualizar_usecase.usuario_repository.obtener_de_db1(texto_usuario)
                 if usuario_db1:
-                    nombre = f"{usuario_db1['Apellido'].strip()} {usuario_db1['Nombre'].strip()}"
+                    # Tomamos el primer registro de la lista para el nombre
+                    primer_registro = usuario_db1[0]
+                    nombre = f"{primer_registro['Apellido'].strip()} {primer_registro['Nombre'].strip()}"
                     self.redis_client.hset(estado_clave, "fase", "confirmar_dni")
                     self.redis_client.hset(estado_clave, "dni", texto_usuario)
                     self.redis_client.hset(estado_clave, "nombre", nombre)

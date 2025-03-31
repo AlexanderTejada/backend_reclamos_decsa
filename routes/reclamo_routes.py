@@ -1,8 +1,8 @@
 # routes/reclamo_routes.py
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from infrastructure.sqlalchemy_reclamo_repository import SQLAlchemyReclamoRepository
 from infrastructure.sqlalchemy_usuario_repository import SQLAlchemyUsuarioRepository
-from infrastructure.database import get_db_session  # Solo get_db_session
+from infrastructure.database import get_db_session
 from application.registrar_reclamo_usecase import RegistrarReclamoUseCase
 from application.consultar_estado_reclamo_usecase import ConsultarEstadoReclamoUseCase
 from application.consultar_reclamo_usecase import ConsultarReclamoUseCase
@@ -12,31 +12,51 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 reclamo_router = APIRouter()
 
-reclamo_repository = None
-cliente_repository = None
-registrar_reclamo_usecase = None
-consultar_estado_usecase = None
-consultar_reclamo_usecase = None
+# Instancias globales para las sesiones y repositorios
+_session_db1 = None
+_session_db2 = None
+_reclamo_repository = None
+_cliente_repository = None
+_registrar_reclamo_usecase = None
+_consultar_estado_usecase = None
+_consultar_reclamo_usecase = None
 
 def init_reclamo_services(app):
-    global reclamo_repository, cliente_repository, registrar_reclamo_usecase, consultar_estado_usecase, consultar_reclamo_usecase
-    session_db1 = get_db_session(app, bind='db1')
-    session_db2 = get_db_session(app, bind='db2')  # Cambiamos db_session por get_db_session
-
-    if session_db1 is None or session_db2 is None:
+    global _session_db1, _session_db2, _reclamo_repository, _cliente_repository
+    global _registrar_reclamo_usecase, _consultar_estado_usecase, _consultar_reclamo_usecase
+    _session_db1 = get_db_session(app, bind='db1')
+    _session_db2 = get_db_session(app, bind='db2')
+    if _session_db1 is None or _session_db2 is None:
         raise RuntimeError("Error en la inicialización de sesiones para DB1 o DB2.")
+    _reclamo_repository = SQLAlchemyReclamoRepository(_session_db2)
+    _cliente_repository = SQLAlchemyUsuarioRepository(_session_db1, _session_db2)
+    _registrar_reclamo_usecase = RegistrarReclamoUseCase(_reclamo_repository, _cliente_repository)
+    _consultar_estado_usecase = ConsultarEstadoReclamoUseCase(_reclamo_repository, _cliente_repository)
+    _consultar_reclamo_usecase = ConsultarReclamoUseCase(_reclamo_repository)
 
-    reclamo_repository = SQLAlchemyReclamoRepository(session_db2)
-    cliente_repository = SQLAlchemyUsuarioRepository(session_db1, session_db2)
-    registrar_reclamo_usecase = RegistrarReclamoUseCase(reclamo_repository, cliente_repository)
-    consultar_estado_usecase = ConsultarEstadoReclamoUseCase(reclamo_repository, cliente_repository)
-    consultar_reclamo_usecase = ConsultarReclamoUseCase(reclamo_repository)
+# Dependencias para inyectar en las rutas
+def get_reclamo_repository():
+    if _reclamo_repository is None:
+        raise RuntimeError("Reclamo repository not initialized.")
+    return _reclamo_repository
+
+def get_registrar_reclamo_usecase():
+    if _registrar_reclamo_usecase is None:
+        raise RuntimeError("Registrar reclamo use case not initialized.")
+    return _registrar_reclamo_usecase
+
+def get_consultar_estado_usecase():
+    if _consultar_estado_usecase is None:
+        raise RuntimeError("Consultar estado use case not initialized.")
+    return _consultar_estado_usecase
+
+def get_consultar_reclamo_usecase():
+    if _consultar_reclamo_usecase is None:
+        raise RuntimeError("Consultar reclamo use case not initialized.")
+    return _consultar_reclamo_usecase
 
 @reclamo_router.get("/")
-async def obtener_todos_los_reclamos():
-    global reclamo_repository
-    if reclamo_repository is None:
-        raise RuntimeError("Reclamo repository not initialized.")
+async def obtener_todos_los_reclamos(reclamo_repository: SQLAlchemyReclamoRepository = Depends(get_reclamo_repository)):
     try:
         reclamos = reclamo_repository.listar_todos()
         data = [r.to_dict() for r in reclamos]
@@ -45,10 +65,7 @@ async def obtener_todos_los_reclamos():
         raise HTTPException(status_code=500, detail=f"Error al obtener los reclamos: {str(e)}")
 
 @reclamo_router.get("/{dni}")
-async def obtener_reclamos_por_dni(dni: str):
-    global consultar_estado_usecase
-    if consultar_estado_usecase is None:
-        raise RuntimeError("Consultar estado use case not initialized.")
+async def obtener_reclamos_por_dni(dni: str, consultar_estado_usecase: ConsultarEstadoReclamoUseCase = Depends(get_consultar_estado_usecase)):
     try:
         respuesta, codigo = consultar_estado_usecase.ejecutar(dni)
         if codigo != 200:
@@ -58,10 +75,7 @@ async def obtener_reclamos_por_dni(dni: str):
         raise HTTPException(status_code=500, detail=f"Error al consultar los reclamos por DNI: {str(e)}")
 
 @reclamo_router.post("/{dni}")
-async def registrar_reclamo(dni: str, data: dict):
-    global registrar_reclamo_usecase
-    if registrar_reclamo_usecase is None:
-        raise RuntimeError("Registrar reclamo use case not initialized.")
+async def registrar_reclamo(dni: str, data: dict, registrar_reclamo_usecase: RegistrarReclamoUseCase = Depends(get_registrar_reclamo_usecase)):
     if not data or "descripcion" not in data:
         raise HTTPException(status_code=400, detail="La descripción del reclamo es requerida")
     try:
@@ -73,10 +87,7 @@ async def registrar_reclamo(dni: str, data: dict):
         raise HTTPException(status_code=500, detail=f"Error al registrar el reclamo: {str(e)}")
 
 @reclamo_router.get("/id/{id_reclamo}")
-async def obtener_reclamo_por_id(id_reclamo: int):
-    global consultar_reclamo_usecase
-    if consultar_reclamo_usecase is None:
-        raise RuntimeError("Consultar reclamo use case not initialized.")
+async def obtener_reclamo_por_id(id_reclamo: int, consultar_reclamo_usecase: ConsultarReclamoUseCase = Depends(get_consultar_reclamo_usecase)):
     try:
         respuesta, codigo = consultar_reclamo_usecase.ejecutar(id_reclamo)
         if codigo != 200:
@@ -86,10 +97,7 @@ async def obtener_reclamo_por_id(id_reclamo: int):
         raise HTTPException(status_code=500, detail=f"Error al obtener el reclamo por ID: {str(e)}")
 
 @reclamo_router.put("/{id_reclamo}")
-async def actualizar_estado_reclamo(id_reclamo: int, data: dict):
-    global reclamo_repository
-    if reclamo_repository is None:
-        raise RuntimeError("Reclamo repository not initialized.")
+async def actualizar_estado_reclamo(id_reclamo: int, data: dict, reclamo_repository: SQLAlchemyReclamoRepository = Depends(get_reclamo_repository)):
     if not data or "estado" not in data:
         raise HTTPException(status_code=400, detail="El campo 'estado' es requerido")
     try:

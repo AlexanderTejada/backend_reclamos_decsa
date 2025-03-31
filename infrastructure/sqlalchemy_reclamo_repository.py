@@ -1,4 +1,4 @@
-# infraestructure/SQLAlchemyReclamoRepository.py
+# infrastructure/sqlalchemy_reclamo_repository.py
 from sqlalchemy.orm import Session, joinedload
 from domain.entities import Reclamo, Cliente
 from datetime import datetime
@@ -11,19 +11,39 @@ class SQLAlchemyReclamoRepository:
         self.session = session
 
     def obtener_por_id(self, id_reclamo: int):
-        return (
-            self.session.query(Reclamo)
-            .options(joinedload(Reclamo.cliente))
-            .filter(Reclamo.ID_RECLAMO == id_reclamo)
-            .first()
-        )
+        try:
+            reclamo = (
+                self.session.query(Reclamo)
+                .options(joinedload(Reclamo.cliente))
+                .filter(Reclamo.ID_RECLAMO == id_reclamo)
+                .first()
+            )
+            if reclamo:
+                logging.info(f"Reclamo encontrado con ID {id_reclamo}")
+            else:
+                logging.info(f"Reclamo con ID {id_reclamo} no encontrado")
+            return reclamo
+        except Exception as e:
+            logging.error(f"Error al obtener reclamo con ID {id_reclamo}: {str(e)}")
+            raise
 
     def obtener_por_usuario(self, id_usuario: int):
-        return (
-            self.session.query(Reclamo)
-            .filter(Reclamo.ID_USUARIO == id_usuario)
-            .all()
-        )
+        try:
+            if not isinstance(id_usuario, int):
+                logging.error(f"ID_USUARIO no es un entero válido: {id_usuario}")
+                raise ValueError(f"ID_USUARIO debe ser un entero, pero se recibió: {id_usuario}")
+
+            logging.info(f"Buscando reclamos para ID_USUARIO {id_usuario}")
+            reclamos = (
+                self.session.query(Reclamo)
+                .filter(Reclamo.ID_USUARIO == id_usuario)
+                .all()
+            )
+            logging.info(f"Se encontraron {len(reclamos)} reclamos para ID_USUARIO {id_usuario}")
+            return reclamos
+        except Exception as e:
+            logging.error(f"Error al obtener reclamos para ID_USUARIO {id_usuario}: {str(e)}")
+            raise
 
     def guardar(self, reclamo: Reclamo):
         try:
@@ -58,16 +78,28 @@ class SQLAlchemyReclamoRepository:
             raise
 
     def listar_todos(self):
-        return (
-            self.session.query(Reclamo)
-            .options(joinedload(Reclamo.cliente))
-            .all()
-        )
+        try:
+            reclamos = (
+                self.session.query(Reclamo)
+                .options(joinedload(Reclamo.cliente))
+                .all()
+            )
+            logging.info(f"Se listaron {len(reclamos)} reclamos desde DB2")
+            return reclamos
+        except Exception as e:
+            logging.error(f"Error al listar todos los reclamos: {str(e)}")
+            raise
 
     def listar_pendientes(self):
-        return (
-            self.session.query(Reclamo)
-            .options(joinedload(Reclamo.cliente))
-            .filter(Reclamo.ESTADO == "Pendiente")
-            .all()
-        )
+        try:
+            reclamos = (
+                self.session.query(Reclamo)
+                .options(joinedload(Reclamo.cliente))
+                .filter(Reclamo.ESTADO == "Pendiente")
+                .all()
+            )
+            logging.info(f"Se listaron {len(reclamos)} reclamos pendientes desde DB2")
+            return reclamos
+        except Exception as e:
+            logging.error(f"Error al listar reclamos pendientes: {str(e)}")
+            raise

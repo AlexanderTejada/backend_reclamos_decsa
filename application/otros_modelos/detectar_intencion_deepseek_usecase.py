@@ -1,4 +1,4 @@
-from application.deepseek_service import DeepSeekService
+from application.otros_modelos.deepseek_service import DeepSeekService
 
 class DetectarIntencionDeepSeekUseCase:
     def __init__(self, deepseek_service: DeepSeekService):

@@ -1,9 +1,11 @@
 # application/chatgpt_service.py
+
 import logging
 import time
+import json
+import re
 from openai import OpenAI
 from infrastructure.settings import Config
-import json
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -23,30 +25,36 @@ class ChatGPTService:
                     return cached_response.decode('utf-8')
 
             full_prompt = f"""
-            Eres DECSA, un asistente virtual oficial de Distribuidora Eléctrica de Caucete S.A. Ayudas con:
-            1) Reclamos sobre servicios eléctricos (ej: "quiero hacer un reclamo").
-            2) Actualizar datos personales (ej: "actualizar mi celular").
-            3) Consultar el estado de un reclamo (ej: "consultar estado").
-            4) Consultar facturas (ej: "quiero ver mi factura" o "consultar factura").
+            Eres DECSA, un asistente virtual oficial de Distribuidora Eléctrica de Caucete S.A. (DECSA). Tu función es ayudar a los usuarios con:
+            1) Hacer reclamos sobre servicios eléctricos.
+            2) Actualizar datos personales.
+            3) Consultar el estado de un reclamo.
+            4) Consultar facturas.
 
             Normas:
-            - En el primer mensaje (sin historial), preséntate y explica qué podés hacer.
-            - No repitas la intro después, usá el historial para responder directo.
-            - Respuestas cálidas y claras, adaptadas al usuario.
-            - Detectá la intención (Reclamo, Actualizar, Consultar, ConsultarFacturas o Conversar).
-            - Si es "Actualizar", pedí qué dato cambiar (calle, barrio, celular, correo).
-            - Si es "ConsultarFacturas", pedí el DNI para buscar la información.
-            - Devolvé JSON con "intencion" y "respuesta".
+            - En el primer mensaje, preséntate como DECSA.
+            - No repitas la presentación si ya hubo diálogo.
+            - Sé cálido, directo, empático.
+            - Detecta la intención: Reclamo, Actualizar, Consultar, ConsultarFacturas, Conversar.
+            - Si la intención es "Actualizar", pide especificar entre: calle, barrio, celular o correo.
+            - Reclamos, Consultas y Facturas deben pedir el DNI.
+            - No encierres la respuesta en bloques de código como ```json```.
+            - Devuelve solo un objeto JSON.
 
-            Historial reciente (últimos 5 mensajes):
+            Historial reciente:
             {historial}
 
             Mensaje actual: "{prompt}"
+
+            Responde en formato JSON con:
+            - "intencion": "Reclamo", "Actualizar", "Consultar", "ConsultarFacturas" o "Conversar".
+            - "respuesta": Texto cálido y claro con una instrucción para avanzar.
             """
 
             start_time = time.time()
+
             response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",  # O "gpt-4" si tenés acceso
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "Sos un asistente que responde en JSON."},
                     {"role": "user", "content": full_prompt}
@@ -56,24 +64,29 @@ class ChatGPTService:
             )
 
             texto_respuesta = response.choices[0].message.content.strip()
-            first_chunk_time = time.time()
-            logging.info(f"Tiempo de respuesta: {first_chunk_time - start_time:.2f} segundos")
+            logging.info(f"Tiempo de respuesta: {time.time() - start_time:.2f} segundos")
             logging.info(f"Respuesta de ChatGPT: {texto_respuesta}")
 
-            # Aseguramos que sea JSON válido
+            # Limpieza de bloques ```json ... ``` si aparecen
+            match = re.match(r"```(?:json)?\s*(\{.*\})\s*```", texto_respuesta, re.DOTALL)
+            if match:
+                texto_respuesta = match.group(1).strip()
+
+            # Validación de formato JSON
             try:
                 json.loads(texto_respuesta)
             except json.JSONDecodeError:
-                logging.warning(f"Respuesta no es JSON: {texto_respuesta}")
+                logging.warning(f"Respuesta no es JSON válido: {texto_respuesta}")
                 texto_respuesta = '{"intencion": "Conversar", "respuesta": "No entendí bien. ¿En qué te ayudo? Decime si querés un reclamo, actualizar datos, consultar algo o ver tu factura."}'
 
             if self.redis_client:
                 self.redis_client.setex(cache_key, 3600, texto_respuesta)
-                logging.info(f"Guardado en caché: {cache_key}")
+                logging.info(f"Respuesta guardada en caché: {cache_key}")
 
             return texto_respuesta
+
         except Exception as e:
-            logging.error(f"Error con ChatGPT: {str(e)}")
+            logging.error(f"Error con gpt-4o-mini: {str(e)}")
             return '{"intencion": "Conversar", "respuesta": "Ups, algo falló. ¿En qué te ayudo?"}'
 
     def detectar_intencion(self, mensaje, historial=""):

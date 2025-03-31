@@ -1,5 +1,5 @@
 #application/detectar_intencion_gemini_usecase.py
-from application.gemini_service import GeminiService
+from application.otros_modelos.gemini_service import GeminiService
 
 class DetectarIntencionGeminiUseCase:
     def __init__(self, gemini_service: GeminiService):

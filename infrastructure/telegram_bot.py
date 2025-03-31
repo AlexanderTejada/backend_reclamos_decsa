@@ -1,15 +1,9 @@
 from flask import Flask
-from infrastructure.settings import Config, TELEGRAM_BOT_TOKEN
+from infrastructure.settings import TELEGRAM_BOT_TOKEN
 from adapters.telegram_adapter import TelegramAdapter
-from application.registrar_reclamo_usecase import RegistrarReclamoUseCase
-from application.actualizar_usuario_usecase import ActualizarUsuarioUseCase
-from application.consultar_estado_reclamo_usecase import ConsultarEstadoReclamoUseCase
-from application.consultar_reclamo_usecase import ConsultarReclamoUseCase
 from application.detectar_intencion_usecase import DetectarIntencionUseCase
-from infrastructure.sqlalchemy_usuario_repository import SQLAlchemyUsuarioRepository
-from infrastructure.sqlalchemy_reclamo_repository import SQLAlchemyReclamoRepository
-from infrastructure.database import init_db, db_session, get_db_session
-from application.llama_service import LlamaService
+from infrastructure.database import init_db
+from application.otros_modelos.llama_service import LlamaService
 from infrastructure.redis_client import RedisClient
 import logging
 

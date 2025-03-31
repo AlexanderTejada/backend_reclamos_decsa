@@ -5,7 +5,7 @@ from application.registrar_reclamo_usecase import RegistrarReclamoUseCase
 from application.actualizar_usuario_usecase import ActualizarUsuarioUseCase
 from application.consultar_estado_reclamo_usecase import ConsultarEstadoReclamoUseCase
 from application.consultar_reclamo_usecase import ConsultarReclamoUseCase
-from application.detectar_intencion_gemini_usecase import DetectarIntencionGeminiUseCase
+from application.otros_modelos.detectar_intencion_gemini_usecase import DetectarIntencionGeminiUseCase
 import re
 import logging
 import json

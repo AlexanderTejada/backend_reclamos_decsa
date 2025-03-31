@@ -1,13 +1,9 @@
 #infraestructure/telegram_bot_gemini.py
 from flask import Flask
-from infrastructure.settings import Config, TELEGRAM_BOT_TOKEN
+from infrastructure.settings import TELEGRAM_BOT_TOKEN
 from adapters.telegram_adapter_gemini import TelegramAdapterGemini
-from application.registrar_reclamo_usecase import RegistrarReclamoUseCase
-from application.actualizar_usuario_usecase import ActualizarUsuarioUseCase
-from application.consultar_estado_reclamo_usecase import ConsultarEstadoReclamoUseCase
-from application.consultar_reclamo_usecase import ConsultarReclamoUseCase
-from application.gemini_service import GeminiService
-from application.detectar_intencion_gemini_usecase import DetectarIntencionGeminiUseCase
+from application.otros_modelos.gemini_service import GeminiService
+from application.otros_modelos.detectar_intencion_gemini_usecase import DetectarIntencionGeminiUseCase
 from infrastructure.redis_client import RedisClient
 from infrastructure.database import init_db
 import logging

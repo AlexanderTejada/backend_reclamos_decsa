@@ -4,12 +4,12 @@ from application.registrar_reclamo_usecase import RegistrarReclamoUseCase
 from application.actualizar_usuario_usecase import ActualizarUsuarioUseCase
 from application.consultar_estado_reclamo_usecase import ConsultarEstadoReclamoUseCase
 from application.consultar_reclamo_usecase import ConsultarReclamoUseCase
-from application.detectar_intencion_deepseek_usecase import DetectarIntencionDeepSeekUseCase
+from application.otros_modelos.detectar_intencion_deepseek_usecase import DetectarIntencionDeepSeekUseCase
 import re
 import logging
 import json
 from infrastructure.database import get_db_session
-from infrastructure.sqlalchemy_usuario_repository import SQLAlchemyUsuarioRepository, Cliente
+from infrastructure.sqlalchemy_usuario_repository import SQLAlchemyUsuarioRepository
 from infrastructure.sqlalchemy_reclamo_repository import SQLAlchemyReclamoRepository
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")

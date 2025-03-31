@@ -1,4 +1,4 @@
-from application.llama_service import LlamaService
+from application.otros_modelos.llama_service import LlamaService
 
 class DetectarIntencionUseCase:
     def __init__(self, llama_service: LlamaService):

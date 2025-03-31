@@ -9,7 +9,7 @@ class ConsultarEstadoReclamoUseCase:
         self.usuario_repository = usuario_repository
 
     def ejecutar(self, dni: str):
-        """Consulta los últimos 5 reclamos de un cliente a partir de su DNI."""
+        """Consulta todos los reclamos de un cliente a partir de su DNI."""
         try:
             logging.info(f"Buscando cliente con DNI {dni} para consultar reclamos")
             cliente = self.usuario_repository.obtener_por_dni(dni)
@@ -26,9 +26,6 @@ class ConsultarEstadoReclamoUseCase:
             if not reclamos:
                 logging.info(f"No se encontraron reclamos para ID_USUARIO {cliente.ID_USUARIO}")
                 return {"reclamos": [], "mensaje": "No tienes reclamos registrados"}, 200
-
-            # Ordenar los reclamos por ID_RECLAMO (descendente) y limitar a los últimos 5
-            reclamos = sorted(reclamos, key=lambda r: r.ID_RECLAMO, reverse=True)[:5]
 
             logging.info(f"Reclamos encontrados para DNI {dni}: {len(reclamos)} reclamos")
             return {
